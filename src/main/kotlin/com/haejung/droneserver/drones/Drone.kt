@@ -17,7 +17,7 @@ data class Drone constructor(
         var type: String,
         var fc: String,
         var size: Int,
-        var battery: Int,
+        var image: String,
         @Id
         @GeneratedValue(strategy = GenerationType.SEQUENCE)
         var id: Long? = null

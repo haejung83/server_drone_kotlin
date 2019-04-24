@@ -1,5 +1,9 @@
 package com.haejung.droneserver.drones
 
+import com.haejung.droneserver.files.FileStorage
+import org.springframework.core.io.Resource
+import org.springframework.http.HttpHeaders
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
@@ -14,16 +18,25 @@ import javax.annotation.PostConstruct
  */
 
 @RestController
-@RequestMapping(value = "/drones")
-class DroneController constructor(private val droneRepository: DroneRepository) {
+@RequestMapping(value = ["/drones"])
+class DroneController(
+        private val droneRepository: DroneRepository,
+        private val fileStorage: FileStorage
+) {
 
     @PostConstruct
     fun setup() {
-        if (droneRepository.findAll().isEmpty()) {
-            droneRepository.save(Drone("SmoothOperator", "quad", "helio spring", 5, 1300))
-            droneRepository.save(Drone("Chameleon", "quad", "kakute f4", 5, 1300))
-            droneRepository.save(Drone("CG", "quad", "helio spring", 5, 1300))
-            droneRepository.save(Drone("Stingy", "quad", "helio spring", 5, 1300))
+        if (droneRepository.count() == 0L) {
+            val saveLoopCount = 5
+            with(droneRepository) {
+                for (i in 0 until saveLoopCount) {
+                    save(Drone("SmoothOperator_$i", "Quad", "HelioSpring", 5, "smooth.jpg"))
+                    save(Drone("Chameleon_$i", "Quad", "Kakute F4", 5, "chameleon.jpg"))
+                    save(Drone("CG_$i", "Quad", "Helio Spring", 5, "cg.jpg"))
+                    save(Drone("Stingy_$i", "Quad", "Helio Spring", 5, "stingy.jpg"))
+                    save(Drone("Japalura_$i", "Quad", "Kakute F4", 3, "japalura.jpg"))
+                }
+            }
         }
     }
 
@@ -35,6 +48,19 @@ class DroneController constructor(private val droneRepository: DroneRepository) 
     @GetMapping("/{quadName}")
     fun getDrone(@PathVariable quadName: String): Drone {
         return droneRepository.findByName(quadName)
+    }
+
+    @GetMapping("/image/{quadName}")
+    fun getDroneImage(@PathVariable quadName: String): ResponseEntity<Resource> {
+        val drone: Drone? = droneRepository.findByName(quadName)
+        val file: Resource? = drone?.image?.let { fileStorage.loadFile(it) }
+        val resource: ResponseEntity<Resource>? = file?.run {
+            ResponseEntity
+                    .ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=${file.filename}")
+                    .body(this)
+        }
+        return resource ?: ResponseEntity.notFound().build()
     }
 
 }
